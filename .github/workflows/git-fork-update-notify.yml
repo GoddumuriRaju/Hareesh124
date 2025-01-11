@@ -1,41 +1,39 @@
 name: Notify on Fork Update
 
 on:
-  workflow_dispatch: # Allows manual trigger from GitHub Actions UI
+  workflow_dispatch:
 
 jobs:
-  check-fork-updates:
+  check-upstream-updates:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Set up repository
       - name: Set up repository
         run: |
           echo "Setting up repository..."
           git init
-          git remote add origin https://github.com/Hareesh124/Hareesh124.git
-          git remote add upstream https://github.com/GoddumuriRaju/Hareesh124.git
+          git remote add origin https://github.com/YOUR_USERNAME/YOUR_REPO.git
+          git remote add upstream https://github.com/UPSTREAM_USERNAME/UPSTREAM_REPO.git
           git fetch upstream
-
-      # Step 2: Check for updates in upstream
-      - name: Check for updates in upstream
-        id: check_updates
+          git fetch origin
+          
+      - name: Check for updates in the upstream repository
         run: |
           echo "Checking for updates in the upstream repository..."
-          git fetch upstream
-          UPDATES=$(git log HEAD..upstream/main --oneline)
+          UPSTREAM_BRANCH=$(git branch -r | grep 'upstream/' | head -n 1 | sed 's|upstream/||')
+          echo "Upstream branch detected: $UPSTREAM_BRANCH"
+          UPDATES=$(git log HEAD..upstream/$UPSTREAM_BRANCH --oneline || echo "")
           if [ -n "$UPDATES" ]; then
-            echo "New updates detected in the upstream repository:"
+            echo "New updates found in the upstream repository:"
             echo "$UPDATES"
-            echo "UPDATES=$UPDATES" >> $GITHUB_ENV
-            echo "updates-detected=true" >> $GITHUB_ENV
+            echo "$UPDATES" > updates.txt
           else
-            echo "No updates detected in the upstream repository."
-            echo "updates-detected=false" >> $GITHUB_ENV
+            echo "No updates in the upstream repository."
+            exit 0
+          fi
 
-      # Step 3: Send email notification
-      - name: Send Email Notification
-        if: env.updates-detected == 'true'
+      - name: Send email notification
+        if: success()
         env:
           EMAIL_SENDER: ${{ secrets.EMAIL_SENDER }}
           EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
@@ -49,10 +47,12 @@ jobs:
           sender = "${{ secrets.EMAIL_SENDER }}"
           receiver = "${{ secrets.EMAIL_RECEIVER }}"
           password = "${{ secrets.EMAIL_PASSWORD }}"
-          subject = "Updates Detected in Forked Repository"
+          subject = "Updates Detected in Upstream Repository"
 
-          # Prepare the email body with updates
-          updates = "${{ env.UPDATES }}"
+          # Reading the updates
+          with open('updates.txt', 'r') as f:
+              updates = f.read()
+
           body = f"The following updates were detected in the upstream repository:\n\n{updates}"
 
           msg = MIMEText(body)
