@@ -16,7 +16,7 @@ jobs:
           git remote add upstream https://github.com/GoddumuriRaju/Hareesh124.git
           git fetch upstream
           git fetch origin
-          
+
       - name: Check for updates in the upstream repository
         run: |
           echo "Checking for updates in the upstream repository..."
@@ -29,11 +29,12 @@ jobs:
             echo "$UPDATES" > updates.txt
           else
             echo "No updates in the upstream repository."
+            touch updates.txt
             exit 0
           fi
 
       - name: Send email notification
-        if: success()
+        if: success() && steps.check-for-updates.outcome == 'success'
         env:
           EMAIL_SENDER: ${{ secrets.EMAIL_SENDER }}
           EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
@@ -50,8 +51,15 @@ jobs:
           subject = "Updates Detected in Upstream Repository"
 
           # Reading the updates
-          with open('updates.txt', 'r') as f:
-              updates = f.read()
+          try:
+              with open('updates.txt', 'r') as f:
+                  updates = f.read()
+              if not updates.strip():
+                  print("No updates to include in the email.")
+                  exit(0)
+          except FileNotFoundError:
+              print("Error: updates.txt not found.")
+              exit(1)
 
           body = f"The following updates were detected in the upstream repository:\n\n{updates}"
 
