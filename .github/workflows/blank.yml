@@ -1,0 +1,71 @@
+name: Notify on Fork Update
+
+on:
+  workflow_dispatch: # Allows manual trigger from GitHub Actions UI
+
+jobs:
+  check-fork-updates:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Set up repository
+      - name: Set up repository
+        run: |
+          echo "Setting up repository..."
+          git init
+          git remote add origin https://github.com/Hareesh124/Hareesh124.git
+          git remote add upstream https://github.com/GoddumuriRaju/Hareesh124.git
+          git fetch upstream
+
+      # Step 2: Check for updates in upstream
+      - name: Check for updates in upstream
+        id: check_updates
+        run: |
+          echo "Checking for updates in the upstream repository..."
+          git fetch upstream
+          UPDATES=$(git log HEAD..upstream/main --oneline)
+          if [ -n "$UPDATES" ]; then
+            echo "New updates detected in the upstream repository:"
+            echo "$UPDATES"
+            echo "UPDATES=$UPDATES" >> $GITHUB_ENV
+            echo "updates-detected=true" >> $GITHUB_ENV
+          else
+            echo "No updates detected in the upstream repository."
+            echo "updates-detected=false" >> $GITHUB_ENV
+
+      # Step 3: Send email notification
+      - name: Send Email Notification
+        if: env.updates-detected == 'true'
+        env:
+          EMAIL_SENDER: ${{ secrets.EMAIL_SENDER }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          EMAIL_RECEIVER: ${{ secrets.EMAIL_RECEIVER }}
+        run: |
+          echo "Sending email notification..."
+          python3 - <<EOF
+          import smtplib
+          from email.mime.text import MIMEText
+
+          sender = "${{ secrets.EMAIL_SENDER }}"
+          receiver = "${{ secrets.EMAIL_RECEIVER }}"
+          password = "${{ secrets.EMAIL_PASSWORD }}"
+          subject = "Updates Detected in Forked Repository"
+
+          # Prepare the email body with updates
+          updates = "${{ env.UPDATES }}"
+          body = f"The following updates were detected in the upstream repository:\n\n{updates}"
+
+          msg = MIMEText(body)
+          msg['Subject'] = subject
+          msg['From'] = sender
+          msg['To'] = receiver
+
+          try:
+              with smtplib.SMTP("smtp.gmail.com", 587) as server:
+                  server.starttls()
+                  server.login(sender, password)
+                  server.sendmail(sender, receiver, msg.as_string())
+              print("Email sent successfully!")
+          except Exception as e:
+              print(f"Failed to send email: {e}")
+          EOF
