@@ -12,8 +12,8 @@ jobs:
         run: |
           echo "Setting up repository..."
           git init
-          git remote add origin https://github.com/YOUR_USERNAME/YOUR_REPO.git
-          git remote add upstream https://github.com/UPSTREAM_USERNAME/UPSTREAM_REPO.git
+          git remote add origin https://github.com/Hareesh124/Hareesh124.git
+          git remote add upstream https://github.com/GoddumuriRaju/Hareesh124.git
           git fetch upstream
           git fetch origin
           
